@@ -30,6 +30,7 @@
 *.dylib
 
 # Executables
+/tests/test_tetris
 *.exe
 *.out
 *.app
