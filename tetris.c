@@ -1,5 +1,5 @@
 /**
- * tetris.c
+ * tetris.c (v1)
  *
  * A simple game of Tetris.
  *
@@ -118,7 +118,7 @@ int move_piece(int dx, int dy) {
 
 /////////////////// SETUP ////////////////////
 
-// Computes the score obtained from clearing a line, 
+// Computes the score obtained from clearing a line,
 // where `bonus` is the number of cleared lines up to this line after
 // placing the current piece.
 int compute_points_for_line(int bonus) {
@@ -139,7 +139,7 @@ void setup_field(void) {
     }
 }
 
-// Allows the user to override which shape will drop next. 
+// Allows the user to override which shape will drop next.
 void choose_next_shape(void) {
     printf("Enter new next shape: ");
     char symbol = read_char();
@@ -182,7 +182,7 @@ void print_field(void) {
     printf("\\=========/\n");
 }
 
-// Checks if a piece with a given array of coordinates intersects with a point, 
+// Checks if a piece with a given array of coordinates intersects with a point,
 // and if so returns a pointer to that matching coordinate, otherwise NULL.
 struct coordinate *piece_hit_test(struct coordinate coordinates[PIECE_SIZE], int row, int col) {
     for (int i = 0; i < PIECE_SIZE; ++i) {
@@ -195,7 +195,7 @@ struct coordinate *piece_hit_test(struct coordinate coordinates[PIECE_SIZE], int
     return NULL;
 }
 
-// Check if the current piece is fully in-bounds and doesn't collide 
+// Check if the current piece is fully in-bounds and doesn't collide
 // with any non-EMPTY part of the field.
 int piece_intersects_field(void) {
     for (int i = 0; i < PIECE_SIZE; ++i) {
