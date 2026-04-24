@@ -44,6 +44,8 @@ struct game_state {
     int  piece_y;
     int  piece_rotation;
     int  score;
+    int  lines;
+    int  level;
     bool game_running;
     bool use_color;
     char field[FIELD_HEIGHT][FIELD_WIDTH];
@@ -185,6 +187,8 @@ static void setup_game(struct game_state *gs) {
     gs->piece_y          = 0;
     gs->piece_rotation   = 0;
     gs->score            = 0;
+    gs->lines            = 0;
+    gs->level            = 1;
     gs->game_running     = true;
     gs->use_color        = should_use_color();
     for (int i = 0; i < PIECE_SIZE; ++i) {
@@ -278,6 +282,8 @@ static void consume_lines(struct game_state *gs) {
 
         row++;
         lines_cleared++;
+        gs->lines++;
+        gs->level = gs->lines / 10 + 1;
         gs->score += compute_points_for_line(gs, lines_cleared);
     }
 }
@@ -415,12 +421,12 @@ static void print_field(const struct game_state *gs) {
 
         // NEXT panel, positioned alongside specific rows.
         if (row == 1) {
-            fputs("    NEXT:", stdout);
-        } else if (row == 2) {
-            fputs("    ", stdout);
-            print_next_preview_row(gs, 0);
+            printf("     NEXT: %c", shapes[gs->next_shape_index].symbol);
         } else if (row == 3) {
-            fputs("    ", stdout);
+            fputs("      ", stdout);
+            print_next_preview_row(gs, 0);
+        } else if (row == 4) {
+            fputs("      ", stdout);
             print_next_preview_row(gs, 1);
         }
 
