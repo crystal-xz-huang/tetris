@@ -65,6 +65,8 @@ static const struct shape shapes[NUM_SHAPES] = {
 
 // A "cell" is two characters wide so filled cells look square on a
 // typical terminal (glyphs are roughly twice as tall as they are wide).
+// CELL_FILLED is used in color mode; in mono mode a cell is the piece
+// symbol doubled (see put_cell below), which is also two characters wide.
 #define CELL_FILLED "██"   // U+2588 full block, twice
 #define CELL_EMPTY  "  "   // two spaces
 
@@ -96,8 +98,17 @@ static const char *color_for_symbol(char sym) {
     }
 }
 
-// Prints a filled 2-char cell in the piece's color (or plain when color
-// is disabled). For EMPTY cells, prints two spaces.
+// Prints a filled 2-char cell.
+//
+// Color mode:  a solid "██" block in the piece's color.
+// Mono mode:   the piece's letter doubled (e.g. "II", "JJ"). Using the
+//              symbol as the glyph keeps cells the same width as the
+//              color version, but lets you see where one piece ends and
+//              the next begins — two adjacent pieces of different types
+//              read as `...IIIIJJJJ...` instead of a single undifferentiated
+//              `████████` blob.
+//
+// EMPTY cells are two spaces regardless of mode.
 static void put_cell(bool use_color, char sym) {
     if (sym == EMPTY) {
         fputs(CELL_EMPTY, stdout);
@@ -109,8 +120,13 @@ static void put_cell(bool use_color, char sym) {
             printf("%s" CELL_FILLED ANSI_RESET, col);
             return;
         }
+        // Unknown symbol: fall through to the solid block.
+        fputs(CELL_FILLED, stdout);
+        return;
     }
-    fputs(CELL_FILLED, stdout);
+    // Mono: piece letter doubled so pieces stay distinguishable.
+    putchar(sym);
+    putchar(sym);
 }
 
 static bool should_use_color(void) {
@@ -495,6 +511,9 @@ static bool handle_command(struct game_state *gs, char command) {
         place_piece(gs);
     } else if (command == 'c') {
         choose_next_shape(gs);
+    } else if (command == 't') {
+        gs->use_color = !gs->use_color;
+        printf("Color is now %s.\n", gs->use_color ? "ON" : "OFF");
     } else if (command == '?') {
         show_debug_info(gs);
     } else if (command == 'q') {
