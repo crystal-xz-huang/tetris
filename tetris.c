@@ -19,6 +19,11 @@
 
 #define EMPTY ' '
 
+// Preview grid dimensions. The widest piece (I) spans 4 cells, and every
+// piece fits in 2 rows when rendered from its bounding-box top-left.
+#define PREVIEW_W 4
+#define PREVIEW_H 2
+
 ///////////////////// Types /////////////////////
 
 struct coordinate {
@@ -56,17 +61,28 @@ static const struct shape shapes[NUM_SHAPES] = {
     { 'Z', { { 0,  0}, { 1,  0}, { 0, -1}, {-1, -1} } },
 };
 
+//////////////////// Glyphs /////////////////////
+
+// A "cell" is two characters wide so filled cells look square on a
+// typical terminal (glyphs are roughly twice as tall as they are wide).
+#define CELL_FILLED "██"   // U+2588 full block, twice
+#define CELL_EMPTY  "  "   // two spaces
+
+// Box-drawing chars for the field border (U+2550..U+255D).
+#define BOX_H   "═"
+#define BOX_V   "║"
+#define BOX_TL  "╔"
+#define BOX_TR  "╗"
+#define BOX_BL  "╚"
+#define BOX_BR  "╝"
+
 //////////////////// Colors /////////////////////
 //
 // ANSI colors are only emitted when the game is running on an interactive
-// terminal AND the NO_COLOR environment variable is unset. In pipe mode
-// (redirected stdout, regression tests) colors stay OFF, so the byte-level
-// output is identical to the original tetris.c.
+// terminal AND the NO_COLOR environment variable is unset.
 
 #define ANSI_RESET "\033[0m"
 
-// ANSI foreground colour code for each piece, roughly matching the
-// "guideline" Tetris palette. Returns "" for unknown symbols / EMPTY.
 static const char *color_for_symbol(char sym) {
     switch (sym) {
         case 'I': return "\033[96m";  // bright cyan
@@ -80,41 +96,38 @@ static const char *color_for_symbol(char sym) {
     }
 }
 
-// Prints a single character, optionally wrapped in its piece color escape.
-// When `use_color` is false, behaves exactly like putchar(c).
-static void put_piece_char(bool use_color, char c) {
-    if (use_color && c != EMPTY) {
-        const char *col = color_for_symbol(c);
+// Prints a filled 2-char cell in the piece's color (or plain when color
+// is disabled). For EMPTY cells, prints two spaces.
+static void put_cell(bool use_color, char sym) {
+    if (sym == EMPTY) {
+        fputs(CELL_EMPTY, stdout);
+        return;
+    }
+    if (use_color) {
+        const char *col = color_for_symbol(sym);
         if (*col != '\0') {
-            printf("%s%c%s", col, c, ANSI_RESET);
+            printf("%s" CELL_FILLED ANSI_RESET, col);
             return;
         }
     }
-    putchar(c);
+    fputs(CELL_FILLED, stdout);
 }
 
-// Should colors be emitted in this run? Yes iff stdout is a terminal
-// AND the NO_COLOR env var is unset (https://no-color.org).
 static bool should_use_color(void) {
-    if (getenv("NO_COLOR") != NULL) {
-        return false;
-    }
+    if (getenv("NO_COLOR") != NULL) return false;
     return isatty(STDOUT_FILENO) != 0;
 }
 
 ////////////////// Prototypes ///////////////////
 
-// Setup
 static void setup_game(struct game_state *gs);
 static void setup_field(struct game_state *gs);
 
-// Piece lifecycle
 static void new_piece(struct game_state *gs, bool should_announce);
 static void place_piece(struct game_state *gs);
 static void consume_lines(struct game_state *gs);
 static int  compute_points_for_line(const struct game_state *gs, int bonus);
 
-// Piece movement / rotation
 static void rotate_right(struct game_state *gs);
 static void rotate_left(struct game_state *gs);
 static bool move_piece(struct game_state *gs, int dx, int dy);
@@ -123,18 +136,15 @@ static const struct coordinate *piece_hit_test(
     const struct coordinate coordinates[PIECE_SIZE],
     int piece_x, int piece_y, int row, int col);
 
-// Rendering
 static void print_field(const struct game_state *gs);
+static void print_next_preview_row(const struct game_state *gs, int preview_row);
 static void show_debug_info(const struct game_state *gs);
 
-// Input
 static void choose_next_shape(struct game_state *gs);
 static char read_char(void);
 
-// Game loop / dispatch
 static void game_loop(struct game_state *gs);
 static bool handle_command(struct game_state *gs, char command);
-
 
 /////////////////// MAIN ////////////////////
 
@@ -152,7 +162,6 @@ int main(void) {
 
 /////////////////// SETUP ////////////////////
 
-// Initialises the game state for a fresh game.
 static void setup_game(struct game_state *gs) {
     gs->next_shape_index = 0;
     gs->piece_symbol     = EMPTY;
@@ -169,7 +178,6 @@ static void setup_game(struct game_state *gs) {
     setup_field(gs);
 }
 
-// Initialises the field to all EMPTY.
 static void setup_field(struct game_state *gs) {
     for (int row = 0; row < FIELD_HEIGHT; ++row) {
         for (int col = 0; col < FIELD_WIDTH; ++col) {
@@ -180,17 +188,13 @@ static void setup_field(struct game_state *gs) {
 
 /////////////////// PIECES ////////////////////
 
-// Sets the current piece from the upcoming shape, advances the queue,
-// and ends the game if the new piece immediately collides with the field.
 static void new_piece(struct game_state *gs, bool should_announce) {
-    // Put the piece (roughly) in the top middle.
     gs->piece_x = 4;
     gs->piece_y = 1;
     gs->piece_rotation = 0;
 
     gs->piece_symbol = shapes[gs->next_shape_index].symbol;
 
-    // The `O` and `I` pieces need a bit of nudging.
     if (gs->piece_symbol == 'O') {
         gs->piece_x -= 1;
         gs->piece_y -= 1;
@@ -202,7 +206,6 @@ static void new_piece(struct game_state *gs, bool should_announce) {
         gs->shape_coordinates[i] = shapes[gs->next_shape_index].coordinates[i];
     }
 
-    // Just cycle through the shapes in order.
     gs->next_shape_index += 1;
     gs->next_shape_index %= NUM_SHAPES;
 
@@ -212,12 +215,15 @@ static void new_piece(struct game_state *gs, bool should_announce) {
         gs->game_running = false;
     } else if (should_announce) {
         printf("A new piece has appeared: ");
-        put_piece_char(gs->use_color, gs->piece_symbol);
-        putchar('\n');
+        if (gs->use_color) {
+            printf("%s%c" ANSI_RESET "\n",
+                   color_for_symbol(gs->piece_symbol), gs->piece_symbol);
+        } else {
+            printf("%c\n", gs->piece_symbol);
+        }
     }
 }
 
-// Fixes the current piece to the field, clears full lines, spawns next piece.
 static void place_piece(struct game_state *gs) {
     for (int i = 0; i < PIECE_SIZE; ++i) {
         int row = gs->shape_coordinates[i].y + gs->piece_y;
@@ -229,7 +235,6 @@ static void place_piece(struct game_state *gs) {
     new_piece(gs, /* should_announce = */ true);
 }
 
-// Clears any full lines and awards the appropriate points.
 static void consume_lines(struct game_state *gs) {
     int lines_cleared = 0;
 
@@ -261,9 +266,6 @@ static void consume_lines(struct game_state *gs) {
     }
 }
 
-// Computes the score obtained from clearing a line, where `bonus` is
-// the number of cleared lines up to this line after placing the
-// current piece.
 static int compute_points_for_line(const struct game_state *gs, int bonus) {
     if (bonus == 4) {
         if (gs->use_color) {
@@ -272,26 +274,18 @@ static int compute_points_for_line(const struct game_state *gs, int bonus) {
             printf("\n*** TETRIS! ***\n\n");
         }
     }
-
-    // Reward clearing multiple lines at the same time.
     return 100 + 40 * (bonus - 1) * (bonus - 1);
 }
 
 /////////////////// MOVEMENT ////////////////////
 
-// Rotates the current piece clockwise (right).
 static void rotate_right(struct game_state *gs) {
     gs->piece_rotation++;
-
     for (int i = 0; i < PIECE_SIZE; ++i) {
-        // This negate-y-and-swap operation rotates 90 degrees clockwise.
         int temp = gs->shape_coordinates[i].x;
         gs->shape_coordinates[i].x = -gs->shape_coordinates[i].y;
         gs->shape_coordinates[i].y = temp;
     }
-
-    // The `I` and `O` pieces aren't centered on the middle of a cell,
-    // and so need a nudge after being rotated.
     if (gs->piece_symbol == 'I' || gs->piece_symbol == 'O') {
         for (int i = 0; i < PIECE_SIZE; ++i) {
             gs->shape_coordinates[i].x += 1;
@@ -299,54 +293,34 @@ static void rotate_right(struct game_state *gs) {
     }
 }
 
-// Rotates the current piece counter-clockwise (left) by rotating it
-// clockwise three times. The original implementation does this too —
-// kept identical so piece_rotation / coordinate drift match exactly.
 static void rotate_left(struct game_state *gs) {
     rotate_right(gs);
     rotate_right(gs);
     rotate_right(gs);
 }
 
-// Translates the current piece, only if the new location is valid.
 static bool move_piece(struct game_state *gs, int dx, int dy) {
     gs->piece_x += dx;
     gs->piece_y += dy;
-
     if (piece_intersects_field(gs)) {
-        // Reverse the move if it resulted in an invalid position.
         gs->piece_x -= dx;
         gs->piece_y -= dy;
         return false;
     }
-
     return true;
 }
 
-// Checks if the current piece is fully in-bounds and doesn't collide
-// with any non-EMPTY part of the field.
 static bool piece_intersects_field(const struct game_state *gs) {
     for (int i = 0; i < PIECE_SIZE; ++i) {
         int x = gs->shape_coordinates[i].x + gs->piece_x;
         int y = gs->shape_coordinates[i].y + gs->piece_y;
-
-        if (x < 0 || x >= FIELD_WIDTH) {
-            return true;
-        }
-        if (y < 0 || y >= FIELD_HEIGHT) {
-            return true;
-        }
-
-        if (gs->field[y][x] != EMPTY) {
-            return true;
-        }
+        if (x < 0 || x >= FIELD_WIDTH) return true;
+        if (y < 0 || y >= FIELD_HEIGHT) return true;
+        if (gs->field[y][x] != EMPTY) return true;
     }
-
     return false;
 }
 
-// Checks if a piece with a given array of coordinates intersects a point;
-// if so returns a pointer to that coordinate, otherwise NULL.
 static const struct coordinate *piece_hit_test(
     const struct coordinate coordinates[PIECE_SIZE],
     int piece_x, int piece_y, int row, int col)
@@ -354,44 +328,98 @@ static const struct coordinate *piece_hit_test(
     for (int i = 0; i < PIECE_SIZE; ++i) {
         if (coordinates[i].x + piece_x == col &&
             coordinates[i].y + piece_y == row) {
-            // note that the below line involves *pointer* arithmetic
             return coordinates + i;
         }
     }
-
     return NULL;
 }
 
 /////////////////// RENDERING ////////////////////
 
-// Prints the playing field.
-static void print_field(const struct game_state *gs) {
-    printf("\n/= Field =\\    SCORE: %d\n", gs->score);
+// Renders one row (0 or 1) of the NEXT piece preview. The piece is
+// aligned to its bounding-box top-left so every piece shows up in the
+// same "cell" of the preview, regardless of where its coordinates sit
+// around the origin.
+static void print_next_preview_row(const struct game_state *gs, int preview_row) {
+    const struct shape *s = &shapes[gs->next_shape_index];
 
-    for (int row = 0; row < FIELD_HEIGHT; ++row) {
-        putchar('|');
+    int min_x = s->coordinates[0].x;
+    int min_y = s->coordinates[0].y;
+    for (int i = 1; i < PIECE_SIZE; ++i) {
+        if (s->coordinates[i].x < min_x) min_x = s->coordinates[i].x;
+        if (s->coordinates[i].y < min_y) min_y = s->coordinates[i].y;
+    }
 
-        for (int col = 0; col < FIELD_WIDTH; ++col) {
-            if (piece_hit_test(gs->shape_coordinates,
-                               gs->piece_x, gs->piece_y, row, col)) {
-                put_piece_char(gs->use_color, gs->piece_symbol);
-            } else {
-                put_piece_char(gs->use_color, gs->field[row][col]);
+    for (int col = 0; col < PREVIEW_W; ++col) {
+        bool filled = false;
+        for (int i = 0; i < PIECE_SIZE; ++i) {
+            if (s->coordinates[i].x - min_x == col &&
+                s->coordinates[i].y - min_y == preview_row) {
+                filled = true;
+                break;
             }
         }
+        put_cell(gs->use_color, filled ? s->symbol : EMPTY);
+    }
+}
 
-        putchar('|');
+// Prints the playing field. Layout per row:
+//
+//   ║<FIELD_WIDTH * CELL>║    [optional NEXT-panel content]
+//
+// The NEXT panel lives on rows 1–3 of the field output:
+//   row 1 → "NEXT:"
+//   row 2 → first preview row
+//   row 3 → second preview row
+static void print_field(const struct game_state *gs) {
+    // Top border
+    putchar('\n');
+    fputs(BOX_TL, stdout);
+    for (int col = 0; col < FIELD_WIDTH; ++col) {
+        fputs(BOX_H BOX_H, stdout);
+    }
+    printf("%s    SCORE: %d\n", BOX_TR, gs->score);
 
+    // Field rows
+    for (int row = 0; row < FIELD_HEIGHT; ++row) {
+        fputs(BOX_V, stdout);
+
+        for (int col = 0; col < FIELD_WIDTH; ++col) {
+            char c;
+            if (piece_hit_test(gs->shape_coordinates,
+                               gs->piece_x, gs->piece_y, row, col)) {
+                c = gs->piece_symbol;
+            } else {
+                c = gs->field[row][col];
+            }
+            put_cell(gs->use_color, c);
+        }
+
+        fputs(BOX_V, stdout);
+
+        // NEXT panel, positioned alongside specific rows.
         if (row == 1) {
-            printf("     NEXT: ");
-            put_piece_char(gs->use_color, shapes[gs->next_shape_index].symbol);
+            fputs("    NEXT:", stdout);
+        } else if (row == 2) {
+            fputs("    ", stdout);
+            print_next_preview_row(gs, 0);
+        } else if (row == 3) {
+            fputs("    ", stdout);
+            print_next_preview_row(gs, 1);
         }
 
         putchar('\n');
     }
-    printf("\\=========/\n");
+
+    // Bottom border
+    fputs(BOX_BL, stdout);
+    for (int col = 0; col < FIELD_WIDTH; ++col) {
+        fputs(BOX_H BOX_H, stdout);
+    }
+    fputs(BOX_BR "\n", stdout);
 }
 
+// The debug view still uses letters so `?` output stays easy to grep.
 static void show_debug_info(const struct game_state *gs) {
     printf("next_shape_index = %d\n", gs->next_shape_index);
     printf("piece_symbol     = %d\n", gs->piece_symbol);
@@ -407,23 +435,18 @@ static void show_debug_info(const struct game_state *gs) {
 
     printf("\nField:\n");
     for (int row = 0; row < FIELD_HEIGHT; ++row) {
-        if (row < 10) {
-            putchar(' ');
-        }
-
+        if (row < 10) putchar(' ');
         printf("%d:  ", row);
         for (int col = 0; col < FIELD_WIDTH; ++col) {
             printf("%d %c ", gs->field[row][col], gs->field[row][col]);
         }
         putchar('\n');
     }
-
     putchar('\n');
 }
 
 /////////////////// INPUT ////////////////////
 
-// Allows the user to override which shape will drop next.
 static void choose_next_shape(struct game_state *gs) {
     printf("Enter new next shape: ");
     char symbol = read_char();
@@ -440,7 +463,6 @@ static void choose_next_shape(struct game_state *gs) {
     }
 }
 
-// Reads and returns a single character.
 static char read_char(void) {
     char command;
     if (scanf(" %c", &command) == 1) {
@@ -451,26 +473,17 @@ static char read_char(void) {
 
 /////////////////// GAME LOOP ////////////////////
 
-// Handles a single command. Returns `false` iff the user has asked to
-// quit with 'q'; in every other case returns `true` so the loop
-// continues (game-over is signalled separately via `gs->game_running`).
 static bool handle_command(struct game_state *gs, char command) {
     if (command == 'r') {
         rotate_right(gs);
-        if (piece_intersects_field(gs)) {
-            rotate_left(gs);
-        }
+        if (piece_intersects_field(gs)) rotate_left(gs);
     } else if (command == 'R') {
         rotate_left(gs);
-        if (piece_intersects_field(gs)) {
-            rotate_right(gs);
-        }
+        if (piece_intersects_field(gs)) rotate_right(gs);
     } else if (command == 'n') {
         new_piece(gs, /* should_announce = */ false);
     } else if (command == 's') {
-        if (!move_piece(gs, 0, 1)) {
-            place_piece(gs);
-        }
+        if (!move_piece(gs, 0, 1)) place_piece(gs);
     } else if (command == 'S') {
         while (move_piece(gs, 0, 1)) {}
         place_piece(gs);
@@ -493,18 +506,12 @@ static bool handle_command(struct game_state *gs, char command) {
     return true;
 }
 
-// The main loop — read commands and dispatch them.
 static void game_loop(struct game_state *gs) {
     while (gs->game_running) {
         print_field(gs);
-
         printf("  > ");
         char command = read_char();
-
-        if (!handle_command(gs, command)) {
-            break;
-        }
+        if (!handle_command(gs, command)) break;
     }
-
     printf("\nGoodbye!\n");
 }
