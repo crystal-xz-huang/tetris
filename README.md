@@ -1,12 +1,12 @@
 # Tetris
 
-This project is a basic implementation of [Tetris](https://tetris.com/play-tetris) in C.
+This project is a simple implementation of [Tetris](https://tetris.com/play-tetris) in C.
 
 ## Overview
 
 This simple game of _Tetris_ takes place on a 2D field, where players must fit together descending shapes to make lines.
 
-You can move a piece left (a) and right (d), drop it down (one step with s or all the way with S), and rotate it (r and R).
+You can move a piece left (`a`) and right (`d`), drop it down (one step with `s` or all the way with `S`), and rotate it (`r` and `R`).
 
 Once a piece hits the bottom, another piece will appear at the top of the field.
 
