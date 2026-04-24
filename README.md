@@ -1,49 +1,61 @@
-# Tetris
+# Tetris in C
 
-This project is a simple implementation of [Tetris](https://tetris.com/play-tetris) in C.
+`tetris.c` is an implementation of [Tetris](https://en.wikipedia.org/wiki/Tetris) that runs in a terminal.
 
 ## Overview
 
 This simple game of _Tetris_ takes place on a 2D field, where players must fit together descending shapes to make lines.
 
-You can move a piece left (`a`) and right (`d`), drop it down (one step with `s` or all the way with `S`), and rotate it (`r` and `R`).
+You can move a piece left (<kbd>a</kbd>) and right (<kbd>d</kbd>), drop it down (one step with <kbd>s</kbd> or all the way with <kbd>S</kbd>), and rotate it (<kbd>r</kbd> and <kbd>R</kbd>).
 
 Once a piece hits the bottom, another piece will appear at the top of the field.
 
 Any horizontal lines in the field that become completely filled will be cleared, and points will be awarded to the player's score based on how many lines are cleared at the same time.
 
-## Commands
+## Controls
 
-- `r` - Rotate the current piece clockwise
-- `R` - Rotate the current piece counter-clockwise
-- `n` - Remove the current piece and add a new one at the top of the field
-- `s` - Move the current piece down one row.
-- `S` - Drop the current piece to the bottom of the field
-- `a` - Move the current piece to the left by one column
-- `d` - Move the current piece to the right by one column
-- `p` - Place the current piece into the field
-- `c` - Allow the player to choose which piece will drop next
-- `?` - Output the current state of the game
-- `q` - Quit the game
+| Key | Action |
+| --- | --- |
+| <kbd>a</kbd> | Move left |
+| <kbd>d</kbd> | Move right |
+| <kbd>s</kbd> | Move down one row |
+| <kbd>S</kbd> | Hard drop to the bottom |
+| <kbd>r</kbd> | Rotate clockwise |
+| <kbd>R</kbd> | Rotate counter-clockwise |
+| <kbd>p</kbd> | Place the current piece into the field |
+| <kbd>n</kbd> | Skip to a new piece |
+| <kbd>c</kbd> | Choose the next piece by symbol (<kbd>I</kbd>, <kbd>J</kbd>, <kbd>L</kbd>, <kbd>O</kbd>, <kbd>S</kbd>, <kbd>T</kbd>) |
+| <kbd>t</kbd> | Toggle color on/off (mono-color mode shows each piece as its letter doubled, e.g. <kbd>II</kbd>, <kbd>JJ</kbd>) |
+| <kbd>?</kbd> | Print the current state of the game |
+| <kbd>q</kbd> | Quit |
 
 ## Getting Started
 
-To get a feel for this game, try it out in a terminal!
+To get a feel for this game, try it out in a terminal:
 
-### Compilation
+1. **Clone the project to your local machine:**
 
-To compile the game, run the following command:
-
-```
-gcc tetris.c -o tetris
+```bash
+git clone https://github.com/crystal-xz-huang/tetris.git
 ```
 
-### Running the Game
+This will add the following files into the directory:
 
-To run the game, execute the compiled program:
+- `tetris.c`: an implementation of Tetris in C.
+- `tetris.mk`: a [make](https://manpages.debian.org/jump?q=make.1) fragment for compiling `tetris.c`.
+- `Makefile`: a makefile that includes `tetris.mk`.
 
-```
+2. **Compile and run the game in the terminal:**
+
+```bash
+make
 ./tetris
+```
+
+3. **To clean up the compiled files, run:**
+
+```bash
+make clean
 ```
 
 ## Example Gameplay
