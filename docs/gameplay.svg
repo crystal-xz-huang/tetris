@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-labelledby="title desc">
+  <title id="title">Tetris terminal gameplay screenshot</title>
+  <desc id="desc">A terminal-style screenshot showing the Tetris board, score, next-piece preview, and command prompt.</desc>
+  <rect width="900" height="560" rx="8" fill="#171717"/>
+  <rect x="28" y="24" width="844" height="512" rx="6" fill="#0b1020" stroke="#334155"/>
+  <circle cx="54" cy="48" r="7" fill="#ef4444"/>
+  <circle cx="78" cy="48" r="7" fill="#f59e0b"/>
+  <circle cx="102" cy="48" r="7" fill="#22c55e"/>
+  <text x="42" y="86" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="22">
+    <tspan x="42" dy="0">Welcome to my tetris!</tspan>
+    <tspan x="42" dy="32"></tspan>
+    <tspan x="42" dy="32">╔══════════════════╗    SCORE: 240</tspan>
+    <tspan x="42" dy="32">║                  ║</tspan>
+    <tspan x="42" dy="32">║        ████      ║    NEXT:</tspan>
+    <tspan x="42" dy="32">║      ████        ║      ██</tspan>
+    <tspan x="42" dy="32">║                  ║    ██████</tspan>
+    <tspan x="42" dy="32">║      ██████      ║</tspan>
+    <tspan x="42" dy="32">║  ██████████      ║</tspan>
+    <tspan x="42" dy="32">║    ████████      ║</tspan>
+    <tspan x="42" dy="32">║██    ████  ██    ║</tspan>
+    <tspan x="42" dy="32">║██████████  ██████║</tspan>
+    <tspan x="42" dy="32">║████████████████  ║</tspan>
+    <tspan x="42" dy="32">╚══════════════════╝</tspan>
+    <tspan x="42" dy="32">  &gt; s</tspan>
+  </text>
+</svg>
