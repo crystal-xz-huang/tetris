@@ -21,3 +21,26 @@ run: tetris
 
 run-debug: tetris
 	./tetris --debug
+
+PREFIX ?= /usr/local
+
+.PHONY: install uninstall
+install: tetris
+	install -d $(PREFIX)/bin
+	install -m 755 tetris $(PREFIX)/bin/tetris
+
+uninstall:
+	rm -f $(PREFIX)/bin/tetris
+
+DOCS_DIR := docs
+
+# Record a gameplay session to docs/gameplay.cast, then convert to docs/gameplay.svg.
+# Run `make record` first (play, then exit with Q), then `make svg`.
+.PHONY: record svg
+record: tetris
+	@mkdir -p $(DOCS_DIR)
+	asciinema rec --overwrite $(DOCS_DIR)/gameplay.cast -c './tetris'
+
+svg: $(DOCS_DIR)/gameplay.cast
+	svg-term --in $(DOCS_DIR)/gameplay.cast --out $(DOCS_DIR)/gameplay.svg \
+	    --window --width 80 --height 26

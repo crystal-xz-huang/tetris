@@ -10,7 +10,6 @@ make tetris >/dev/null
 help_output=$(printf '?\nq\n' | ./tetris)
 printf '%s\n' "$help_output" | grep -F "Welcome to my tetris!" >/dev/null
 printf '%s\n' "$help_output" | grep -F "HELP"       >/dev/null
-printf '%s\n' "$help_output" | grep -F "Controls:"  >/dev/null
 printf '%s\n' "$help_output" | grep -F "QUIT"       >/dev/null
 printf '%s\n' "$help_output" | grep -F "Quitting..."  >/dev/null
 printf '%s\n' "$help_output" | grep -F "Goodbye!"     >/dev/null

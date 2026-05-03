@@ -2,39 +2,23 @@
 
 `tetris.c` is an implementation of [Tetris](https://en.wikipedia.org/wiki/Tetris) that runs in a terminal.
 
-## Table of Contents <!-- omit in toc -->
-- [Tetris in C](#tetris-in-c)
-  - [Overview](#overview)
-  - [Load Screen](#load-screen)
-  - [Controls](#controls)
-  - [Scoring](#scoring)
-  - [Settings](#settings)
-  - [Launching](#launching)
-  - [Getting Started](#getting-started)
-  - [Testing](#testing)
-  - [Example Gameplay](#example-gameplay)
+A game of Tetris takes place on a 2D field, where the player must fit together descending shapes to make lines.
 
-## Overview
+You can move a piece left (<kbd>a</kbd>) and right (<kbd>d</kbd>), drop it down (one step with (<kbd>s</kbd>) or all the way with (<kbd>S</kbd> ), and rotate it (r and R).
 
-A command-line game of _Tetris_ takes place on a 2D field, where players
-must fit together descending shapes to make lines. Fill a horizontal line
-and it clears; clear enough lines and you level up.
+Once a piece hits the bottom, another piece will appear at the top of the field.
 
-When launched on a TTY the game opens with a load screen showing the
-TETRIS title art, a `PRESS ANY KEY TO START` prompt, and the empty
-playing field with a `READY!` banner. Press any key to start (Q to
-quit). The HUD then sits to the **left** of the field and shows
-`SCORE`, `BEST`, `LEVEL`, `LINES`, and elapsed `TIME`; the `NEXT`
-preview and the `Press '?' for help` hint sit to the **right**. The
-controls + settings panel opens on demand with <kbd>?</kbd>. An
-optional ghost piece shows where the current piece would land. Frames
-redraw in place each frame so gameplay stays smooth and flicker-free,
-and the whole game block is horizontally centered to the terminal
-width.
+Any horizontal lines in the field that become completely filled will be cleared, and points will be awarded to the player's score based on how many lines are cleared at the same time.
+
+To get a feel for this game, try it out in a terminal:
+
+```bash
+git clone https://github.com/crystal-xz-huang/tetris.git
+```
 
 ## Load Screen
 
-The load screen is shown once on TTY launch:
+The load screen is shown once on TTY launch. Press any key to start, or `Q` to quit.
 
 ```
               █████████╗ ████████╗ █████████╗ ████████╗   ███╗  ████████╗
@@ -70,9 +54,7 @@ The load screen is shown once on TTY launch:
                         ╚════════════════════╝
 ```
 
-The clock doesn't start until you dismiss the load screen. Pressing
-<kbd>Q</kbd> at the load screen quits without playing. Piped stdin
-skips the load screen so scripts stay deterministic.
+The clock doesn't start until you dismiss the load screen. Piped stdin skips the load screen so scripts stay deterministic.
 
 ## Controls
 
@@ -90,11 +72,6 @@ skips the load screen so scripts stay deterministic.
 | Toggle grid | <kbd>G</kbd> (none &rarr; dots &rarr; plus) |
 | Show ghost piece | <kbd>H</kbd> |
 
-On an interactive terminal the current piece falls automatically. The
-gravity tick scales with the current level (slow at level 1, fast at
-level 9). A piped stdin stays command-driven with no gravity so scripts
-remain deterministic.
-
 ## Scoring
 
 | Event               | Points              |
@@ -106,9 +83,7 @@ remain deterministic.
 | Triple line clear   | 500                 |
 | Tetris (4 lines)    | 800                 |
 
-The level advances every ten lines cleared, starting from whatever
-level you launched at. The best score achieved this session is shown on
-the HUD as `BEST`.
+The level advances every ten lines cleared, starting from whatever level you launched at. The best score this session is shown on the HUD as `BEST`.
 
 ## Settings
 
@@ -119,70 +94,28 @@ Four display options can be toggled at any time during play:
 - **Grid** (<kbd>G</kbd>) — cycle the field background: none, dot grid, or plus grid.
 - **Ghost piece** (<kbd>H</kbd>) — dim preview of where the current piece would land.
 
-The current value of each setting is shown inside the HELP overlay
-(opened with <kbd>?</kbd>), so you can confirm what's active at a glance
-without cluttering the field.
-
-## Launching
-
-Run `./tetris` (or `make run`) to drop straight into the game on a TTY.
-Level defaults to `1`. To start at a higher level (harder levels raise
-the gravity tick rate), pass `-l N`:
-
-```bash
-./tetris -l 5        # start directly at level 5
-```
-
 ## Getting Started
 
-To get a feel for this game, try it out in a terminal:
-
 ```bash
-# Open a terminal (Command Prompt or PowerShell for Windows, Terminal for macOS or Linux)
-
-# Ensure Git is installed
-# Visit https://git-scm.com to download and install console Git if not already installed
-
-# Clone the repository
 git clone https://github.com/crystal-xz-huang/tetris.git
-
-# Navigate to the project directory
 cd tetris
-
-# Compile and run the game
-make run
+make
+sudo make install
 ```
 
-> [!NOTE]
->
-> The `make run` command compiles the source code and runs the game in one step. If you prefer to compile and run separately, you can use the following commands:
->
-> ```bash
-> make
-> ./tetris
-> ```
-
-To clean up the compiled files and start fresh, use the following command:
+Then run from anywhere:
 
 ```bash
-make clean
+tetris                      # start at level 1
+tetris --start-level 5      # start at level 5 (1–9)
 ```
 
-This will remove the `tetris` executable and any object files generated during compilation.
+To uninstall:
+
+```bash
+sudo make uninstall
+```
 
 ## Testing
 
-Run the game in debug mode using the following command:
-
-```bash
-make run-debug
-# or
-./tetris -d
-./tetris --debug
-```
-
-Now the <kbd>?</kbd> command will print the internal state of the game instead of the help menu.
-
-<!-- TODO: Add example output from debug mode here. -->
-
-## Example Gameplay
+Run in debug mode with `./tetris --debug` (or `make run-debug`). With `--debug`, `?` dumps internal game state instead of the help panel.

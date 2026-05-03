@@ -319,9 +319,9 @@ static void game_loop_interactive(struct game_state *gs);
 
 static void print_usage(const char *prog) {
     fprintf(stderr,
-        "Usage: %s [-d|--debug] [-l LEVEL]\n"
-        "  -d, --debug     '?' prints internal debug state instead of pausing\n"
-        "  -l LEVEL        skip the start menu; start at LEVEL (1-9)\n",
+        "Usage: %s [-d|--debug] [-l LEVEL|--start-level LEVEL]\n"
+        "  -d, --debug              '?' prints internal debug state instead of pausing\n"
+        "  -l, --start-level LEVEL  skip the start menu; start at LEVEL (1-9)\n",
         prog);
 }
 
@@ -335,7 +335,7 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
-        } else if (strcmp(argv[i], "-l") == 0 && i + 1 < argc) {
+        } else if ((strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--start-level") == 0) && i + 1 < argc) {
             cli_level = atoi(argv[++i]);
             if (cli_level < 1 || cli_level > 9) {
                 fprintf(stderr, "Level must be between 1 and 9\n");
@@ -793,7 +793,10 @@ static void print_screen(const struct game_state *gs) {
             print_spaces(7);
         } else {
             for (int col = 0; col < FIELD_WIDTH; ++col) {
-                bool is_current = piece_hit_test(gs->shape_coordinates,
+                // Suppress the falling piece on the load screen so the
+                // field reads as empty behind the READY! banner.
+                bool is_current = !gs->show_ready &&
+                                  piece_hit_test(gs->shape_coordinates,
                                                  gs->piece_x, gs->piece_y,
                                                  row, col) != NULL;
                 bool is_ghost_cell = false;
@@ -884,60 +887,33 @@ static void print_title_screen(const struct game_state *gs) {
     print_screen(gs);
 }
 
-// HELP overlay (controls + current settings). Shown when '?' is pressed
-// in non-debug mode. Keeps the "HELP", "Controls:", and "QUIT" markers
-// intact so scripted consumers (and tests) can still grep for them.
+// HELP overlay. Shown when '?' is pressed in non-debug mode. Plain
+// text — no box art. Each label is padded to column 19 so the key
+// column lines up. The arrow glyphs (←, →, ↑, ↓) are 1 visual column
+// each but 3 bytes in UTF-8, so the spacing on those rows is hand-tuned
+// and must not be run through printf width specifiers.
 static void print_help_menu(const struct game_state *gs) {
-    putchar('\n');
-    fputs(BOX_TL, stdout);
-    print_hline(13); fputs(" HELP ", stdout); print_hline(13);
-    fputs(BOX_TR, stdout);
-    putchar('\n');
-
-    // Each inner line is exactly 32 visual columns wide. The arrow
-    // glyphs (←, →, ↑, ↓) are 1 column each but 3 bytes in UTF-8 — the
-    // spacing below is hand-tuned, do not run snprintf padding over it.
-    static const char *const CONTROL_LINES[] = {
-        " Controls:                      ",
-        "                                ",
-        "   MOVE              A/D, ← →   ",
-        "   ROTATE            W, ↑       ",
-        "   SOFT DROP         S, ↓       ",
-        "   HARD DROP         SPACE      ",
-        "                                ",
-        "   PAUSE/RESUME      P          ",
-        "   HELP              ?          ",
-        "   QUIT              Q          ",
-        "                                ",
-        "   TOGGLE COLOR      C          ",
-        "   TOGGLE BLOCK      B          ",
-        "   TOGGLE GRID       G          ",
-        "   SHOW GHOST PIECE  H          ",
-        "                                ",
+    (void)gs;
+    static const char *const HELP_LINES[] = {
+        "MOVE               A/D or ←/→",
+        "ROTATE             W or ↑",
+        "SOFT DROP          S or ↓",
+        "HARD DROP          SPACE",
+        "",
+        "PAUSE/RESUME       P",
+        "HELP               ?",
+        "QUIT               Q",
+        "",
+        "TOGGLE COLOR       C",
+        "TOGGLE BLOCK       B",
+        "TOGGLE GRID        G",
+        "SHOW GHOST PIECE   H",
     };
-    for (size_t i = 0; i < sizeof CONTROL_LINES / sizeof CONTROL_LINES[0]; ++i) {
-        fputs(BOX_V, stdout);
-        fputs(CONTROL_LINES[i], stdout);
-        fputs(BOX_V "\n", stdout);
-    }
-
-    // Settings block: ASCII only, so %-32s padding is correct.
-    char buf[64];
-    snprintf(buf, sizeof buf, " Settings:");
-    printf(BOX_V "%-32s" BOX_V "\n", buf);
-    snprintf(buf, sizeof buf, "   Color  (c)   %s", gs->use_color ? "ON" : "OFF");
-    printf(BOX_V "%-32s" BOX_V "\n", buf);
-    snprintf(buf, sizeof buf, "   Block  (b)   %s", symbol_name(gs->symbol_style));
-    printf(BOX_V "%-32s" BOX_V "\n", buf);
-    snprintf(buf, sizeof buf, "   Grid   (g)   %s", grid_name(gs->grid_style));
-    printf(BOX_V "%-32s" BOX_V "\n", buf);
-    snprintf(buf, sizeof buf, "   Ghost  (h)   %s", gs->show_ghost ? "ON" : "OFF");
-    printf(BOX_V "%-32s" BOX_V "\n", buf);
-
-    fputs(BOX_BL, stdout);
-    print_hline(32);
-    fputs(BOX_BR, stdout);
     putchar('\n');
+    for (size_t i = 0; i < sizeof HELP_LINES / sizeof HELP_LINES[0]; ++i) {
+        fputs(HELP_LINES[i], stdout);
+        putchar('\n');
+    }
 }
 
 // The debug view still uses letters so `?` output stays easy to grep.
